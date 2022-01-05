@@ -99,7 +99,7 @@ object Effects {
    * */
 
   def TestTimeIO(): Unit = {
-    val test: MyIO[Long] = measure(MyIO(() => Thread.sleep(1000)))
+    val test: MyIO[Long] = measure2(MyIO(() => Thread.sleep(1000)))
     println(test.unsafeRun())
   }
   //3
@@ -125,7 +125,7 @@ object Effects {
     clock.unsafeRun()
     putStrLn("I am the king of the world").unsafeRun()
     TestTimeIO()
-    testConsole()
+//    testConsole()
   }
 
 }
