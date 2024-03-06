@@ -18,7 +18,7 @@ object ContextualAbstractionsScala2 {
 
   // extension method
   val greeting: String = "Peter".greet()
-  //identical as above
+  //identical as above.
   val explicitGreet: String = new ImpersonableString("Peter").greet()
 
   import scala.concurrent.duration._
@@ -45,6 +45,7 @@ object ContextualAbstractionsScala2 {
 //    override def toJson(person: Person): String = "\"name\" : \"" + person.name + "\"}"
 //  }
 
+  //implement a person serializer that can be used with convert2Json
   implicit val personSerializer: JSONSerializer[Person] = (person: Person) => "{\"name\" : \"" + person.name + "\"}"
 
   val davidsJson: String = convert2Json(Person("David")) //implicit personSerializer passed here
@@ -55,7 +56,10 @@ object ContextualAbstractionsScala2 {
       override def toJson(list: List[T]): String = s"[${list.map(serializer.toJson).mkString(",")}]"
     }
 
-  val personsJson: String = convert2Json(List(Person("Alice"), Person("Babi")))
+//  implicit def createListSerializer[T](implicit serializer: JSONSerializer[T]): JSONSerializer[List[T]] =
+//    (list: List[T]) => s"[${list.map(serializer.toJson).mkString(",")}]"
+
+  val personsJson: String = convert2Json(List(Person("Alice"), Person("Bob")))
 
   //implicit conversions (not recommended). Scala 3 will have guard rails against this abuse
   case class Cat(name: String) {
@@ -64,8 +68,8 @@ object ContextualAbstractionsScala2 {
 
   //This is how you can shoot yourself
   implicit def string2Cat(name: String): Cat = Cat(name)
-  val aCat: Cat                              = "Garfield" //call string2Cat("Garfield")
-  val garfieldMeowing: String                = "Garfield".meow()
+  val aCat: Cat                              = "Garfield"        //call string2Cat("Garfield")
+  val garfieldMeowing: String                = "Garfield".meow() // string2Cat("Garfield").meow()
 
   def main(args: Array[String]): Unit = {
 
@@ -100,7 +104,7 @@ object TypeClassesScala2 {
   implicit object PersonSerializer extends JSONSerializer[Person] {
     override def toJson(value: Person): String =
       s"""
-         |{ "name" : ${value.name}", "age" : ${value.age} }
+         |{ "name" : "${value.name}", "age" : ${value.age} }
          |""".stripMargin.trim
   }
 

@@ -2,9 +2,10 @@ package com.rockthejvm.playground.part2Effects
 
 import cats.effect.IO
 
+import scala.annotation.tailrec
 import scala.io.StdIn
 
-object IOIntroduction {
+object IOExercises {
 
   //IO
   val ourFirstIO: IO[Int] = IO.pure(42)
@@ -14,10 +15,10 @@ object IOIntroduction {
   })
 
   // don't use pure, because it'll be evaluated eagerly
-//  val shouldNotDoThis: IO[Int] = IO.pure {
-//    println("I'm producing an integer")
-//    43
-//  }
+  //  val shouldNotDoThis: IO[Int] = IO.pure {
+  //    println("I'm producing an integer")
+  //    43
+  //  }
 
   val aDelayedIO_v2: IO[Int] = IO { // in this case apply == delay
     println("I'm also producing an integer")
@@ -46,43 +47,48 @@ object IOIntroduction {
   // 1 - sequence two IOs and take the result of the LAST one
   // hint: use flatMap
   def sequenceTakeLast[A, B](ioa: IO[A], iob: IO[B]): IO[B] = {
-    ioa.flatMap(_ => iob)
+    ioa.flatMap { _ => iob }
   }
 
   def sequenceTakeLast_v2[A, B](ioa: IO[A], iob: IO[B]): IO[B] = {
-    ioa *> iob // *> is "andThen" operator
+    ???
   }
 
   def sequenceTakeLast_v3[A, B](ioa: IO[A], iob: IO[B]): IO[B] = {
-    ioa >> iob // >> is "andThen" by name operator
+    ???
   }
 
   // 2 - sequence two IOS and take the result of the FIRST one
   // hint: use flatMap
   def sequenceTakeFirst[A, B](ioa: IO[A], iob: IO[B]): IO[A] = {
-    ioa.flatMap(a => iob.map(_ => a))
+    ioa.flatMap { a =>
+      iob.map(_ => a)
+    }
   }
 
   def sequenceTakeFirst_v2[A, B](ioa: IO[A], iob: IO[B]): IO[A] = {
-    ioa <* iob
+    for {
+      a <- ioa
+      b <- iob
+    } yield a
   }
 
   // 3 - repeat an IO effect forever
   // hint: Use flatMap and recursion
   def forever[A](io: IO[A]): IO[A] = {
-    io.flatMap(_ => forever(io))
+    io.flatMap(a => forever(IO(a)))
   }
 
   def forever_v2[A](io: IO[A]): IO[A] = {
-    io >> forever_v2(io)
+    ???
   }
 
   def forever_v3[A](io: IO[A]): IO[A] = {
-    io *> forever_v3(io)
+    ???
   }
 
   def forever_v4[A](io: IO[A]): IO[A] = {
-    io.foreverM //with tail recursion
+    ???
   }
 
   // 4 - convert an IO to a different type
@@ -92,7 +98,7 @@ object IOIntroduction {
   }
 
   def convert_v2[A, B](ioa: IO[A], value: B): IO[B] = {
-    ioa.as(value)
+    ???
   }
 
   // 5 - discard value inside an IO, just return Unit
@@ -102,63 +108,70 @@ object IOIntroduction {
   }
 
   def asUnit_v2[A](ioa: IO[A]): IO[Unit] = {
-    ioa.as(()) // discourage - don't use this. confusing to fellow programmer. () is overloaded
+    ioa.void
   }
 
   def asUnit_v3[A](ioa: IO[A]): IO[Unit] = {
-    ioa.void //same as above, and more readable
+    ???
   }
 
-  // 6 - use/fix stack recursion
+  // 6 - use/fix stack/tail recursion
+  import scala.annotation.tailrec
   def sum(n: Int): Int =
     if (n <= 0) 0
     else n + sum(n - 1)
 
-  def sumIO(n: Int): IO[Int] = {
+  import scala.annotation.tailrec
+  def sumIO(n: Int): IO[Int] = IO.delay {
     if (n <= 0) IO { 0 }
-    else
-      for {
-        lastNumber <- IO(n)
-        prevSum    <- sumIO(n - 1)
-      } yield prevSum + lastNumber
-  }
+    else {
+      sumIO(n - 1).flatMap(acc => IO { acc + n })
+    }
+  }.flatten
+
+  def sumIO2(n: Int): IO[Int] =
+    if (n <= 0) IO { 0 }
+    else {
+      IO { n }.flatMap(currentNum => sumIO(n - 1).map(acc => currentNum + acc))
+//      sumIO(n - 1).flatMap(acc => IO { n }.map(x => acc + x))
+    }
 
   // 7 (hard) - write a fibonacci function IO that does NOT crash on recursion
-  // hint: use recursion, ignore expontential time complexity and use flatMap heavily
+  // hint: use recursion, ignore exponential time complexity and use flatMap heavily
   def plainFibonacci(n: Int): Int =
     if (n <= 0) 0
     else if (n == 1) 1
     else plainFibonacci(n - 1) + plainFibonacci(n - 2)
 
-  def fibonacci(n: Int): IO[BigInt] =
-    if (n < 2) IO(1)
-    else
+  def fibonacci(n: Int): IO[BigInt] = {
+    if (n <= 0) IO { 0 }
+    else if (n == 1) IO { 1 }
+    else {
       for {
-        last     <- IO(fibonacci(n - 1)).flatMap(identity) //the func inside flatMap are identical between these 2
-        previous <- IO(fibonacci(n - 2)).flatMap(x => x)
-        //another ways to write these
-//        last2 <- IO.defer(fibonacci(n - 1))
-//        last3 <- IO(fibonacci(n - 1)).flatten
-      } yield last + previous
+        current <- fibonacci(n - 1)
+        prev    <- fibonacci(n - 2)
+      } yield current + prev
+    }
+  }
 
   def main(args: Array[String]): Unit = {
     import cats.effect.unsafe.implicits.global // "Platform" to run IO data structure
     // "end of the world"
 
-//    println(aDelayedIO.unsafeRunSync())
-//    println(smallProgram().unsafeRunSync())
-//    println(smallProgram_v2().unsafeRunSync())
+    //    println(aDelayedIO.unsafeRunSync())
+    //    println(smallProgram().unsafeRunSync())
+    //    println(smallProgram_v2().unsafeRunSync())
 
-//    forever(IO(println("forever!"))).unsafeRunSync()
+    //    forever(IO(println("forever!"))).unsafeRunSync()
 
     //NOTE: This will cause stack overflow because evaluated eagerly
-//    forever_v3(IO {
-//      println("forever!")
-//      Thread.sleep(100)
-//    }).unsafeRunSync()
+    //    forever_v3(IO {
+    //      println("forever!")
+    //      Thread.sleep(100)
+    //    }).unsafeRunSync()
 
-    println(sumIO(20000).unsafeRunSync())
-    (1 to 25).foreach(i => println(fibonacci(i).unsafeRunSync()))
+//    println(sumIO2(20000).unsafeRunSync())
+    (1 to 1000).foreach(i => println(fibonacci(i).unsafeRunSync()))
   }
 
 }
